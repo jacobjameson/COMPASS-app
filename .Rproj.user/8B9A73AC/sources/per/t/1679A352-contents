@@ -1,0 +1,713 @@
+---
+title: "CCSS: Total Cohort - Sample Plots"
+date: "Jan 05, 2024"
+output: 
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r getData, echo=FALSE, message=FALSE, warning=FALSE}
+
+getOutput<-function(curName){
+  curMean<-read.csv(paste0(curName,"_Mean.csv"),as.is=T)
+  curLB<-read.csv(paste0(curName,"_LB.csv"),as.is=T)
+  curUB<-read.csv(paste0(curName,"_UB.csv"),as.is=T)
+  return(list(curMean,curLB,curUB))
+}
+
+
+###get projections
+setwd("C:\\Users\\zjw461\\Dropbox\\Gen_R01\\CCSS_Total\\proj_20231221")
+#summary output (LE, QALE, HALY)
+sum<-getOutput("sum")
+eraDiff<-getOutput("eraDiff")
+#cumulative incidence, survival, mortality, survival
+cumInc<-getOutput("cumIncAge")
+cumInc_Sum<-getOutput("cumIncAge_Sum")
+surv<-getOutput("survAge")
+cumMort_Cause<-getOutput("cumMortAge_Cause")
+cumMort<-getOutput("cumMortAge")
+cumMort_Sum<-getOutput("cumMortAge_Sum")
+jointCumInc<-getOutput("jointCumIncAge")
+#time to event
+eventFree<-getOutput("eventFree")
+chcFree<-getOutput("cumCHCFree")
+ageProp<-getOutput("ageProp")
+onset<-getOutput("onset")
+onsetDist<-getOutput("onsetDist")
+deathDist<-getOutput("deathDist")
+#conditional outcomes
+cond<-getOutput("cond")
+condInc<-getOutput("condInc")
+cond40<-getOutput("cond40")
+
+###general pop projections
+setwd("C:\\Users\\zjw461\\Dropbox\\Gen_R01\\CCSS_Total\\proj_twin_20231221")
+cumInc_Sum_Twin<-getOutput("cumIncAge_Sum")
+
+
+groups<-sum[[1]]$Group #n=687
+#groups<-groups[459:687]
+groups<-groups[1:6] #limit to a few groups to show sample output
+numGroups<-length(groups)
+
+dxNames<-c("Breast Cancer","CHF","Colorectal Cancer","Glial","MICAD","Sarcoma","Stroke","Valvular Disease")
+
+getGroup<-function(output,curGroup){
+  curMean<-subset(output[[1]],Group==curGroup)
+  curLB<-subset(output[[2]],Group==curGroup)
+  curUB<-subset(output[[3]],Group==curGroup)
+  return(list(curMean,curLB,curUB))
+}
+
+
+```
+
+\newpage
+
+```{r plotFx, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+#plotting functions
+
+addPoint<-function(x,curMean,curLB,curUB,curCol){
+  points(x,curMean,pch=16,col=curCol)
+  points(x,curLB,pch="-",cex=1.2,col=curCol)
+  points(x,curUB,pch="-",cex=1.2,col=curCol)
+  lines(c(x,x),c(curLB,curUB),col=curCol)
+}
+
+plotCum<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,6:105],type='l',col='blue',xlab="Age",main=curTitle,ylim=c(0,high),ylab="%")
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,6:105]), curLB[1,6:105]), col=rgb(0,0,1,0.1), border = NA)
+}
+
+addLine<-function(curMean,curLB,curUB,curCol,curShade){
+  lines(0:99,curMean[1,6:105],col=curCol)
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,6:105]), curLB[1,6:105]), col=curShade, border = NA)
+}
+
+plotSurv<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,4:103],type='l',col='blue',xlab="Age",main=curTitle,ylim=c(0,high),ylab="%")
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,4:103]), curLB[1,4:103]), col=rgb(0,0,1,0.1), border = NA)
+}
+
+plotEventFree<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,3:102]*100,type='l',col='blue',xlab="Age",main=curTitle,ylim=c(0,high),ylab="%")
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,3:102]*100), curLB[1,3:102]*100), col=rgb(0,0,1,0.1), border = NA)
+}
+
+plotCHCFree<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,3:102],type='l',col='blue',xlab="Age",main=curTitle,ylim=c(0,high),ylab="Years")
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,3:102]), curLB[1,3:102]), col=rgb(0,0,1,0.1), border = NA)
+}
+
+plotAgeProp<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,3:102],type='l',col='blue',xlab="Percent",main=curTitle,ylim=c(0,high),ylab="Age")
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,3:102]), curLB[1,3:102]), col=rgb(0,0,1,0.1), border = NA)
+}
+
+plotAgeDist<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,3:102]*100,type='l',col='blue',xlab="Age",main=curTitle,ylim=c(0,high),ylab="%")
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,3:102]*100), curLB[1,3:102]*100), col=rgb(0,0,1,0.1), border = NA)
+}
+
+plotJoint<-function(curTitle,curMean,curLB,curUB,high){
+  plot(0:99,curMean[1,7:106],type='l',col='blue',xlab="Age",ylim=c(0,high),ylab="%")
+  title(main=curTitle,cex.main=0.8)
+  polygon(c(rev(0:99), 0:99), c(rev(curUB[1,7:106]), curLB[1,7:106]), col=rgb(0,0,1,0.1), border = NA)
+}
+
+plotCond<-function(curTitle,curMean,curLB,curUB,high,curY){
+  ages<-curMean$Age
+  plot(0,0,type='l',xlab="Age",ylim=c(0,high),ylab=curY,xlim=c(min(ages),max(ages)))
+  title(main=curTitle,cex.main=0.8)
+  for(a in 1:length(ages)){
+    addPoint(ages[a],curMean$Value[a],curLB$Value[a],curUB$Value[a],'blue')
+  }
+}
+
+plotCond40<-function(curTitle,curMean,curLB,curUB,high){
+  plot(40:99,curMean[1,4:63],type='l',col='blue',xlab="Age",main=curTitle,ylim=c(0,high),ylab="%")
+  polygon(c(rev(40:99), 40:99), c(rev(curUB[1,4:63]), curLB[1,4:63]), col=rgb(0,0,1,0.1), border = NA)
+}
+
+```
+
+
+# Summary Indicators
+
+## Overall
+```{r plotSum, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-max(sum[[3]]$LE,na.rm=T)
+  
+par(mfrow=c(1,3))
+for(g in 1:numGroups){
+  curGroup<-getGroup(sum,groups[g])
+  plot(0,0,type='l',ylim=c(0,high),xlim=c(1,5),main=groups[g],xaxt='n',xlab="",ylab="")
+  axis(1,at=1:5,labels=c("LE","Cond. QALE","Cond. LE","Healthy LY","Cond. Healthy LY"),cex.axis=0.8)
+  for(x in 1:5){
+    addPoint(x,curGroup[[1]][1,1+x],curGroup[[2]][1,1+x],curGroup[[3]][1,1+x],'blue')
+  }
+}
+
+```
+
+## Difference by Era
+```{r plotEraDiff, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+#high<-max(eraDiff[[3]][,3:5],na.rm=T)
+high<-12
+
+par(mfrow=c(1,3))
+for(g in 1:3){ #don't plot by era subgroup
+  curGroup<-getGroup(eraDiff,groups[g])
+  plot(0,0,type='l',ylim=c(0,high),xlim=c(0.5,3.5),main=groups[g],xaxt='n',xlab="",ylab="")
+  axis(1,at=1:3,labels=c("Cond. LE","Cond. QALE","Cond. Healthy LY"),cex.axis=0.8)
+  for(x in 1:3){
+    addPoint(x-0.2,curGroup[[1]][x,3],curGroup[[2]][x,3],curGroup[[3]][x,3],'blue')
+    addPoint(x,curGroup[[1]][x,4],curGroup[[2]][x,4],curGroup[[3]][x,4],'red')
+    addPoint(x+0.2,curGroup[[1]][x,5],curGroup[[2]][x,5],curGroup[[3]][x,5],'green')
+  }
+  legend('topright',c("80-70","90-70","90-80"),col=c("blue","red","green"),pch=c(16,16,16),inset=0.01,cex=0.9)
+}
+
+```
+
+\newpage
+
+# Cumulative Incidence
+
+## Recurrence
+```{r plotCumRecur, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-35
+
+par(mfrow=c(1,3))
+for(g in 1:numGroups){
+  curGroup<-getGroup(cumInc,groups[g])
+  plotCum(groups[g], subset(curGroup[[1]],Disease==-1), subset(curGroup[[2]],Disease==-1), subset(curGroup[[3]],Disease==-1), high)
+}
+
+```
+
+\newpage
+
+## CHC
+Survivors may develop more than 1 condition
+
+```{r plotCumInc, echo=FALSE,warning=FALSE, message=FALSE, fig.height=3, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-55
+
+par(mfrow=c(1,4))
+for(g in 1:numGroups){
+  curGroup<-getGroup(cumInc,groups[g])
+  for(d in 0:7){
+    plotCum(paste0(groups[g],": ",dxNames[d+1]), subset(curGroup[[1]],Disease==d), subset(curGroup[[2]],Disease==d), subset(curGroup[[3]],Disease==d), high)
+  }
+}
+
+```
+
+\newpage
+
+## Summaries
+```{r plotCumIncSum, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-80
+
+lblSum<-cumInc_Sum[[1]]$Disease[1:9]
+cols<-c("blue","green","red")
+shades<-c(rgb(0,0,1,0.1), rgb(0,1,0,0.1), rgb(1,0,0,0.1))
+
+par(mfrow=c(1,3))
+for(g in 1:numGroups){
+  curGroup<-getGroup(cumInc_Sum,groups[g])
+  
+  #chc
+  plot(0,0,type='l',xlim=c(0,99),xlab="Age",ylab="%",ylim=c(0,high),main=paste0(groups[g],": CHC"))
+  for(d in 1:3){
+    addLine(subset(curGroup[[1]],Disease==lblSum[d]), subset(curGroup[[2]],Disease==lblSum[d]), subset(curGroup[[3]],Disease==lblSum[d]), cols[d], shades[d])
+  }
+  legend('topleft',c(lblSum[1:3]),lty=c(1,1,1),col=cols,inset=0.01,cex=0.9)
+  
+  #smn
+  plot(0,0,type='l',xlim=c(0,99),xlab="Age",ylab="%",ylim=c(0,high),main=paste0(groups[g],": SMN"))
+  for(d in 4:6){
+    addLine(subset(curGroup[[1]],Disease==lblSum[d]), subset(curGroup[[2]],Disease==lblSum[d]), subset(curGroup[[3]],Disease==lblSum[d]), cols[d-3], shades[d-3])
+  }
+  legend('topleft',c(lblSum[4:6]),lty=c(1,1,1),col=cols,inset=0.01,cex=0.9)
+  
+  #cardiac
+  plot(0,0,type='l',xlim=c(0,99),xlab="Age",ylab="%",ylim=c(0,high),main=paste0(groups[g],": Cardiac"))
+  for(d in 7:9){
+    addLine(subset(curGroup[[1]],Disease==lblSum[d]), subset(curGroup[[2]],Disease==lblSum[d]), subset(curGroup[[3]],Disease==lblSum[d]), cols[d-6], shades[d-6])
+  }
+  legend('topleft',c(lblSum[7:9]),lty=c(1,1,1),col=cols,inset=0.01,cex=0.9)
+}
+
+```
+
+\newpage
+
+## Early Onset and Excess Risk
+
+```{r plotCumIncEarlyOnset, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+addDiffs<-function(curvSurv,curvTwin,ages){
+  for(a in 1:length(ages)){
+    #yDiff
+    ySurv<-curvSurv[1,6+ages[a]]
+    yTwin<-curvTwin[1,6+ages[a]]
+    diff<-round(ySurv-yTwin,1)
+    lines(c(ages[a],ages[a]),c(yTwin,ySurv),col='darkgrey')
+    text(ages[a],(ySurv+yTwin)/2,paste0(diff,"%"),col='darkgrey',cex=0.7,pos=4)
+    #xDiff
+    survAge<-which.max(curvSurv[1,6:105]>=yTwin)-1
+    diff<-ages[a]-survAge
+    lines(c(survAge,ages[a]),c(yTwin,yTwin),col='darkgrey')
+    text((ages[a]+survAge)/2,yTwin,paste0(diff," years"),col='darkgrey',cex=0.7,pos=3)
+  }
+}
+
+
+high<-80
+
+lblSum<-cumInc_Sum[[1]]$Disease[1:9]
+
+par(mfrow=c(1,3))
+for(g in 1:numGroups){
+  curGroup<-getGroup(cumInc_Sum,groups[g])
+  curTwin<-getGroup(cumInc_Sum_Twin,groups[g])
+  
+  #chc
+  d=1
+  plot(0,0,type='l',xlim=c(5,75),xlab="Age",ylab="%",ylim=c(0,high),main=paste0(groups[g],": Any CHC"))
+  addLine(subset(curGroup[[1]],Disease==lblSum[d]), subset(curGroup[[2]],Disease==lblSum[d]), subset(curGroup[[3]],Disease==lblSum[d]), 'red', rgb(1,0,0,0.1))
+  addLine(subset(curTwin[[1]],Disease==lblSum[d]), subset(curTwin[[2]],Disease==lblSum[d]), subset(curTwin[[3]],Disease==lblSum[d]), 'blue', rgb(0,0,1,0.1))
+  addDiffs(subset(curGroup[[1]],Disease==lblSum[d]),subset(curTwin[[1]],Disease==lblSum[d]),c(40,50,65))
+  legend('topleft',c("Survivors","General Population"),lty=c(1,1),col=c('red','blue'),inset=0.01,cex=0.8)
+  
+  #smn
+  d=4
+  plot(0,0,type='l',xlim=c(5,75),xlab="Age",ylab="%",ylim=c(0,high),main=paste0(groups[g],": Any SMN"))
+  addLine(subset(curGroup[[1]],Disease==lblSum[d]), subset(curGroup[[2]],Disease==lblSum[d]), subset(curGroup[[3]],Disease==lblSum[d]), 'red', rgb(1,0,0,0.1))
+  addLine(subset(curTwin[[1]],Disease==lblSum[d]), subset(curTwin[[2]],Disease==lblSum[d]), subset(curTwin[[3]],Disease==lblSum[d]), 'blue', rgb(0,0,1,0.1))
+  addDiffs(subset(curGroup[[1]],Disease==lblSum[d]),subset(curTwin[[1]],Disease==lblSum[d]),c(40,50,65))
+  legend('topleft',c("Survivors","General Population"),lty=c(1,1),col=c('red','blue'),inset=0.01,cex=0.8)
+  
+  #cardiac
+  d=7
+  plot(0,0,type='l',xlim=c(5,75),xlab="Age",ylab="%",ylim=c(0,high),main=paste0(groups[g],": Any Cardiac"))
+  addLine(subset(curGroup[[1]],Disease==lblSum[d]), subset(curGroup[[2]],Disease==lblSum[d]), subset(curGroup[[3]],Disease==lblSum[d]), 'red', rgb(1,0,0,0.1))
+  addLine(subset(curTwin[[1]],Disease==lblSum[d]), subset(curTwin[[2]],Disease==lblSum[d]), subset(curTwin[[3]],Disease==lblSum[d]), 'blue', rgb(0,0,1,0.1))
+  addDiffs(subset(curGroup[[1]],Disease==lblSum[d]),subset(curTwin[[1]],Disease==lblSum[d]),c(40,50,65))
+  legend('topleft',c("Survivors","General Population"),lty=c(1,1),col=c('red','blue'),inset=0.01,cex=0.8)
+}
+
+```
+\newpage
+
+## Joint Incidence
+
+```{r plotJointInc, echo=FALSE,warning=FALSE, message=FALSE, fig.height=3, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-35
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,6),mar=c(5,2,2,1))
+  curGroup<-getGroup(jointCumInc,groups[g])
+  for(d1 in 0:7){
+    for(d2 in 0:7){
+      if(d2>d1){
+        plotJoint(paste0(groups[g],": ",dxNames[d1+1],"+",dxNames[d2+1]), subset(curGroup[[1]],Dx1==d1 & Dx2==d2), subset(curGroup[[2]],Dx1==d1 & Dx2==d2), subset(curGroup[[3]],Dx1==d1 & Dx2==d2), high)
+      }
+    }
+  }
+}
+
+```
+
+\newpage
+
+# Cumulative Mortality
+
+## Survival
+```{r plotSurv, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-100
+
+par(mfrow=c(1,3))
+for(g in 1:numGroups){
+  curGroup<-getGroup(surv,groups[g])
+  plotSurv(groups[g], curGroup[[1]], curGroup[[2]], curGroup[[3]], high)
+}
+
+```
+
+\newpage
+
+## All Causes
+Mutually exclusive
+
+```{r plotCumMort, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+cause<-c("Other","Other SN","Infection","External","Recurrence",dxNames)
+
+high<-55
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,5),mar=c(5,2,2,0))
+  curGroup<-getGroup(cumMort_Cause,groups[g])
+  for(d in 0:12){
+    plotCum(paste0(groups[g],": ",cause[d+1]), subset(curGroup[[1]],Cause==d), subset(curGroup[[2]],Cause==d), subset(curGroup[[3]],Cause==d), high)
+  }
+}
+
+```
+
+\newpage
+
+## Summary Cause
+Mutually exclusive
+
+```{r plotCumMort2, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+cause<-c("Cardiac (4 CHCs)","Recurrence","SMN (4 CHCs)","External","Infection","Other SMN","Other")
+
+high<-55
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,4),mar=c(5,2,2,0))
+  curGroup<-getGroup(cumMort,groups[g])
+  for(d in 0:6){
+    plotCum(paste0(groups[g],": ",cause[d+1]), subset(curGroup[[1]],Cause==d), subset(curGroup[[2]],Cause==d), subset(curGroup[[3]],Cause==d), high)
+  }
+}
+
+```
+
+\newpage
+
+## Summary Cause 2
+Not mutually exclusive
+
+```{r plotCumMort3, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+cause<-cumMort_Sum[[1]]$Cause[1:8]
+
+high<-70
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,4),mar=c(5,2,2,0))
+  curGroup<-getGroup(cumMort_Sum,groups[g])
+  for(d in 1:8){
+    plotCum(paste0(groups[g],": ",cause[d]), subset(curGroup[[1]],Cause==cause[d]), subset(curGroup[[2]],Cause==cause[d]), subset(curGroup[[3]],Cause==cause[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+# Time to Event
+
+## Event-free Survival
+```{r plotEventFree, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+cause<-eventFree[[1]]$Condition[1:9]
+lblCause<-c("Any CHC",dxNames)
+
+high<-100
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,5),mar=c(5,2,2,0))
+  curGroup<-getGroup(eventFree,groups[g])
+  for(d in 1:9){
+    plotEventFree(paste0(groups[g],": ",lblCause[d]), subset(curGroup[[1]],Condition==cause[d]), subset(curGroup[[2]],Condition==cause[d]), subset(curGroup[[3]],Condition==cause[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+## Cumulative CHC-Free Lifeyears
+
+```{r plotCHCFree, echo=FALSE,warning=FALSE, message=FALSE, fig.height=4, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-70
+
+par(mfrow=c(1,3))
+  
+for(g in 1:numGroups){
+  curGroup<-getGroup(chcFree,groups[g])
+  plotCHCFree(groups[g], curGroup[[1]], curGroup[[2]], curGroup[[3]], high)
+}
+
+```
+
+\newpage
+
+## Age by which xx% occurred (inverse CDF)
+
+```{r plotAgeProp, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-100
+
+par(mfrow=c(1,6),mar=c(5,2,2,0))
+  
+for(g in 1:numGroups){
+  curGroup<-getGroup(ageProp,groups[g])
+  plotAgeProp(paste0(groups[g],": Any CHC"), subset(curGroup[[1]],Outcome=="AnyCHC"), subset(curGroup[[2]],Outcome=="AnyCHC"), subset(curGroup[[3]],Outcome=="AnyCHC"), high)
+  plotAgeProp(paste0(groups[g],": Death"), subset(curGroup[[1]],Outcome=="Death"), subset(curGroup[[2]],Outcome=="Death"), subset(curGroup[[3]],Outcome=="Death"), high)
+}
+
+```
+
+\newpage
+
+## Mean Age of Onset
+1st condition: Among those with 1+ condition(s)
+2nd condition: Among those with 2+ conditions
+
+```{r plotOnset, echo=FALSE,warning=FALSE, message=FALSE, fig.height=3, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-80
+
+par(mfrow=c(1,3))
+  
+for(g in 1:numGroups){
+  curGroup<-getGroup(onset,groups[g])
+  plot(0,0,type='l',xlim=c(1,2),ylim=c(0,high),main=groups[g],ylab="Mean Age of Onset",xlab="",xaxt='n')
+  axis(1,at=1:2,labels=c("1st condition","2nd condition"))
+  addPoint(1,curGroup[[1]][1,2],curGroup[[2]][1,2],curGroup[[3]][1,2],'blue')
+  addPoint(2,curGroup[[1]][1,3],curGroup[[2]][1,3],curGroup[[3]][1,3],'blue')
+}
+
+```
+
+\newpage
+
+## Age Distribution of First Onset
+Among those with the condition of interest
+
+```{r plotOnsetAge, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-10
+causes<-onsetDist[[1]]$Condition[1:11]
+lblCauses<-c("Any CHC","SMN","Cardiac",dxNames)
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,4))
+  curGroup<-getGroup(onsetDist,groups[g])
+  for(d in 1:11){
+    plotAgeDist(paste0(groups[g],": ",lblCauses[d]), subset(curGroup[[1]],Condition==causes[d]), subset(curGroup[[2]],Condition==causes[d]), subset(curGroup[[3]],Condition==causes[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+## Age Distribution of Death
+Among those who died from the cause of interest
+
+```{r plotDeathAge, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-10
+causes<-c("Overall","Recur","Cardiac","SMN","Other",paste0("cause",1:13))
+lblCauses<-c("All-Cause","Recurrence","Cardiac","SMN","Other","Cause: Other","Cause: OtherSN","Cause: Infection","Cause: External","Cause: Recurrence",
+                 "Cause: Breast","Cause: CHF","Cause: CRC","Cause: Glial","Cause: MICAD","Cause: Sarcoma","Cause: Stroke"," Cause: Valve")
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,6))
+  curGroup<-getGroup(deathDist,groups[g])
+  for(d in 1:18){
+    plotAgeDist(paste0(groups[g],": ",lblCauses[d]), subset(curGroup[[1]],Cause==causes[d]), subset(curGroup[[2]],Cause==causes[d]), subset(curGroup[[3]],Cause==causes[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+# Conditional Outcomes
+
+## 10-year Survival
+
+```{r plotCond1, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+conditions<-c("Overall","No CHC","Any CHC (1+)","1 CHC","2+ CHC","No SMN","Any SMN","No CVD","Any CVD",dxNames)
+
+high<-1.0
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,6),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="surv")
+  curLB<-subset(curGroup[[2]],Outcome=="surv")
+  curUB<-subset(curGroup[[3]],Outcome=="surv")
+  
+  for(d in 0:16){
+    plotCond(paste0(groups[g],": ",conditions[d+1]), subset(curMean,Condition==d), subset(curLB,Condition==d), subset(curUB,Condition==d), high, "Probability")
+  }
+}
+
+```
+
+\newpage
+
+## Conditional LE
+
+```{r plotCond2, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-50
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,6),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="le")
+  curLB<-subset(curGroup[[2]],Outcome=="le")
+  curUB<-subset(curGroup[[3]],Outcome=="le")
+  
+  for(d in 0:16){
+    plotCond(paste0(groups[g],": ",conditions[d+1]), subset(curMean,Condition==d), subset(curLB,Condition==d), subset(curUB,Condition==d), high, "Years")
+  }
+}
+
+```
+
+\newpage
+
+## Conditional QALE
+
+```{r plotCond3, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+high<-40
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,6),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="qale")
+  curLB<-subset(curGroup[[2]],Outcome=="qale")
+  curUB<-subset(curGroup[[3]],Outcome=="qale")
+  
+  for(d in 0:16){
+    plotCond(paste0(groups[g],": ",conditions[d+1]), subset(curMean,Condition==d), subset(curLB,Condition==d), subset(curUB,Condition==d), high, "QALE")
+  }
+}
+
+```
+
+\newpage
+
+## 10-year Incidence
+```{r plotCond4, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+outcomes<-condInc[[1]]$Outcome[1:28]
+high<-1
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,7),mar=c(5,2,2,1))
+  curGroup<-getGroup(condInc,groups[g])
+  
+  for(d in 1:28){
+    plotCond(paste0(groups[g],": ",outcomes[d]), subset(curGroup[[1]],Outcome==outcomes[d]), subset(curGroup[[2]],Outcome==outcomes[d]), subset(curGroup[[3]],Outcome==outcomes[d]), high, "Probability")
+  }
+}
+
+```
+
+\newpage
+
+## Age 40 Conditional Outcomes
+
+### Survival
+
+```{r plotCond40_1, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+conditions<-cond40[[1]]$Condition[1:9]
+high<-100
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,5),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond40,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="Survival")
+  curLB<-subset(curGroup[[2]],Outcome=="Survival")
+  curUB<-subset(curGroup[[3]],Outcome=="Survival")
+  
+  for(d in 1:9){
+    plotCond40(paste0(groups[g],": ",conditions[d]), subset(curMean,Condition==conditions[d]), subset(curLB,Condition==conditions[d]), subset(curUB,Condition==conditions[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+### New CHC
+
+```{r plotCond40_2, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,5),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond40,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="New CHC")
+  curLB<-subset(curGroup[[2]],Outcome=="New CHC")
+  curUB<-subset(curGroup[[3]],Outcome=="New CHC")
+  
+  for(d in 1:9){
+    plotCond40(paste0(groups[g],": ",conditions[d]), subset(curMean,Condition==conditions[d]), subset(curLB,Condition==conditions[d]), subset(curUB,Condition==conditions[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+### New SMN
+
+```{r plotCond40_3, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,5),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond40,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="New SMN")
+  curLB<-subset(curGroup[[2]],Outcome=="New SMN")
+  curUB<-subset(curGroup[[3]],Outcome=="New SMN")
+  
+  for(d in 1:9){
+    plotCond40(paste0(groups[g],": ",conditions[d]), subset(curMean,Condition==conditions[d]), subset(curLB,Condition==conditions[d]), subset(curUB,Condition==conditions[d]), high)
+  }
+}
+
+```
+
+\newpage
+
+### New CVD
+
+```{r plotCond40_4, echo=FALSE,warning=FALSE, message=FALSE, fig.height=2.8, fig.width=12, dev='pdf', results = 'asis'}
+
+for(g in 1:numGroups){
+  par(mfrow=c(1,5),mar=c(5,2,2,1))
+  curGroup<-getGroup(cond40,groups[g])
+  curMean<-subset(curGroup[[1]],Outcome=="New CVD")
+  curLB<-subset(curGroup[[2]],Outcome=="New CVD")
+  curUB<-subset(curGroup[[3]],Outcome=="New CVD")
+  
+  for(d in 1:9){
+    plotCond40(paste0(groups[g],": ",conditions[d]), subset(curMean,Condition==conditions[d]), subset(curLB,Condition==conditions[d]), subset(curUB,Condition==conditions[d]), high)
+  }
+}
+
+```
+
+\newpage

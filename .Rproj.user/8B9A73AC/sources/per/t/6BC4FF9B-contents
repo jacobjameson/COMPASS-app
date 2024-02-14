@@ -1,0 +1,61 @@
+library(shiny)
+library(readr)
+library(ggplot2)
+library(tidyverse)
+
+
+twins_path <- "data/Survivors vs Twins comparison files_absolute/abs_20231221/"
+
+################################################################################
+# Ages -------------------------------------------------------------------------
+read_and_pivot <- function(path, value_name) {
+  read_csv(paste0(twins_path, path)) %>%
+    select(-c("...103")) %>% # Remove unnecessary column
+    pivot_longer(
+      cols = starts_with("prop_"), 
+      names_to = "Property", 
+      values_to = value_name
+    )
+}
+
+ageProp_Mean_long <- read_and_pivot("ageProp_Mean.csv", "Mean")
+ageProp_UB_long <- read_and_pivot("ageProp_UB.csv", "UpperBound")
+ageProp_LB_long <- read_and_pivot("ageProp_LB.csv", "LowerBound")
+
+ageProp <- reduce(list(ageProp_Mean_long, 
+                       ageProp_UB_long, 
+                       ageProp_LB_long), 
+                  inner_join, by = c("Group", "Outcome", "Property"))
+
+rm(ageProp_Mean_long, ageProp_UB_long, ageProp_LB_long)
+
+################################################################################
+
+read <- function(path, value_name) {
+  read_csv(paste0(twins_path, path))[,-6] %>%
+    rename_with(~ value_name, .cols = "Value")
+}
+
+cond_mean <- read("cond_Mean.csv", "Mean")
+cond_lb <- read("cond_LB.csv", "LowerBound")
+cond_ub <- read("cond_UB.csv", "UpperBound")
+
+cond <- reduce(list(cond_mean, cond_lb, cond_ub), 
+               inner_join, by = c("Group", "Age", "Outcome", "Condition"))
+
+rm(cond_mean, cond_lb, cond_ub)
+
+################################################################################
+
+cond_mean <- read_csv(paste0(twins_path, "cond40_Mean.csv"))
+
+cond_lb <- read("cond40_LB.csv", "LowerBound")
+cond_ub <- read("cond_UB.csv", "UpperBound")
+
+cond <- reduce(list(cond_mean, cond_lb, cond_ub), 
+               inner_join, by = c("Group", "Age", "Outcome", "Condition"))
+
+rm(cond_mean, cond_lb, cond_ub)
+
+
+
